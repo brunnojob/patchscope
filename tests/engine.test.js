@@ -4,6 +4,19 @@ import { parseDiff, analyzeDiff, toMarkdown, limits } from "../src/engine.js";
 import { examples } from "../src/examples.js";
 const patch = (path, body) =>
   `diff --git a/${path} b/${path}\n--- a/${path}\n+++ b/${path}\n${body}`;
+test("truncated hunks warn at EOF, file boundaries and hunk boundaries", () => {
+  const partial = patch("one.txt", "@@ -1,2 +1,2 @@\n-old\n+new");
+  for (const input of [partial, partial + "\n" + patch("two.txt", "@@ -1 +1 @@\n-a\n+b"), partial + "\n@@ -9 +9 @@\n-c\n+d"]) {
+    const report = analyzeDiff(input);
+    assert.ok(report.warnings.some(w => /incomplete/.test(w)));
+    assert.match(toMarkdown(report), /incomplete/);
+  }
+});
+test("complete and empty-range hunks do not warn about truncation", () => {
+  for (const body of ["@@ -1 +1 @@\n-old\n+new\n\\ No newline at end of file", "@@ -0,0 +1 @@\n+new", "@@ -1 +0,0 @@\n-old", "@@ -0,0 +0,0 @@"]) {
+    assert.deepEqual(parseDiff(patch("one.txt", body)).warnings, []);
+  }
+});
 test("release example reports workflow privileges, destructive SQL, removed tests and manifest context", () => {
   const report = analyzeDiff(examples.release);
   assert.equal(report.summary.files, 4);
