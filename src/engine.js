@@ -43,7 +43,12 @@ export function parseDiff(input) {
     oldLine = 0,
     newLine = 0,
     oldRemaining = 0,
-    newRemaining = 0;
+    newRemaining = 0,
+    incomplete = false;
+  const finishHunk = () => {
+    if (hunk && (oldRemaining !== 0 || newRemaining !== 0)) incomplete = true;
+    hunk = false;
+  };
   const start = (path = "untitled") => {
     if (files.length >= limits.files)
       throw new Error("This patch exceeds the 500-file limit.");
@@ -64,6 +69,7 @@ export function parseDiff(input) {
     const line = lines[index];
     if (line.startsWith("diff --git ")) {
       const names = line.slice(11).match(/"(?:\\.|[^"\\])*"|\S+/g) || [];
+      finishHunk();
       start(pathName(names[1] || names[0] || "untitled"));
       continue;
     }
@@ -85,12 +91,13 @@ export function parseDiff(input) {
     if (!current) continue;
     const header = /^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@/.exec(line);
     if (header) {
+      finishHunk();
       oldLine = Number(header[1]);
       newLine = Number(header[3]);
       oldRemaining = Number(header[2] ?? 1);
       newRemaining = Number(header[4] ?? 1);
       current.hunks++;
-      hunk = true;
+      hunk = oldRemaining > 0 || newRemaining > 0;
       current.lines.push({ kind: "hunk", text: line, old: null, new: null });
       continue;
     }
@@ -123,8 +130,9 @@ export function parseDiff(input) {
           new: newLine++,
         });
       } else if (line.startsWith("\\ No newline")) continue;
-      else hunk = false;
-      if (oldRemaining <= 0 && newRemaining <= 0) hunk = false;
+      else finishHunk();
+      if (oldRemaining < 0 || newRemaining < 0) incomplete = true;
+      if (oldRemaining <= 0 && newRemaining <= 0) finishHunk();
       continue;
     }
     if (line.startsWith("new file mode")) current.status = "added";
@@ -137,6 +145,7 @@ export function parseDiff(input) {
       current.path = pathName(line.slice(10), false);
     if (/^(Binary files |GIT binary patch)/.test(line)) current.binary = true;
   }
+  finishHunk();
   if (!files.length)
     throw new Error(
       "No unified diff found. Try: git diff --no-ext-diff --no-color HEAD",
@@ -146,11 +155,14 @@ export function parseDiff(input) {
   );
   return {
     files,
-    warnings: unsupported.length
+    warnings: [
+      ...(incomplete ? ["Some hunk bodies do not match their declared line counts. The patch may be incomplete."] : []),
+      ...(unsupported.length
       ? [
           "Some file sections contain no supported hunks. Their content could not be inspected.",
         ]
-      : [],
+      : []),
+    ],
   };
 }
 const isTest = (path) =>
