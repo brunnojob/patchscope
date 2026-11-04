@@ -43,7 +43,7 @@ The bundled example has **4 changed files and 5 review prompts**. Also try the s
 | Skipped or exclusive test markers | Check which tests actually run |
 | Known TLS verification bypass patterns | Restore certificate verification |
 | Dynamic `eval` / `exec` calls | Trace input and execution context |
-| Dependency manifest without a lockfile in the patch | Check the project’s dependency policy |
+| Dependency manifest without a kept or added lockfile in the patch | Check the project’s dependency policy |
 | Source changes without changed tests | Confirm existing coverage or add a regression test |
 | Binary changes or large file changes | Make space for a separate review |
 
