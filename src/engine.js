@@ -329,14 +329,19 @@ export function analyzeDiff(input) {
   const manifests = parsed.files.filter(
     (file) => isManifest(file.path) && file.additions + file.deletions,
   );
-  if (manifests.length && !parsed.files.some((file) => isLock(file.path)))
+  if (
+    manifests.length &&
+    !parsed.files.some(
+      (file) => isLock(file.path) && file.status !== "deleted",
+    )
+  )
     emit(
       "lockfile",
       "medium",
       manifests[0],
       null,
       "Check dependency reproducibility",
-      "A dependency manifest changed, but no recognized lockfile is present in this patch. Some ecosystems do not require one.",
+      "A dependency manifest changed, but this patch contains no recognized lockfile that is kept or added. Some ecosystems do not require one.",
       "Confirm the project’s dependency policy and regenerate the lockfile if applicable.",
     );
   const runtime = parsed.files.filter(

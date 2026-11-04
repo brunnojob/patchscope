@@ -115,6 +115,31 @@ test("lockfile in patch suppresses dependency reproducibility prompt", () => {
   );
   assert.ok(!report.findings.some((f) => f.rule === "lockfile"));
 });
+test("deleted lockfiles do not suppress dependency reproducibility prompts", () => {
+  const manifest = patch(
+    "package.json",
+    '@@ -1 +1 @@\n-{"x":"1"}\n+{"x":"2"}',
+  );
+  for (const lockfile of [
+    "diff --git a/package-lock.json b/package-lock.json\ndeleted file mode 100644\n--- a/package-lock.json\n+++ /dev/null\n@@ -1 +0,0 @@\n-old-lock",
+    "--- a/package-lock.json\n+++ /dev/null\n@@ -1 +0,0 @@\n-old-lock",
+    "diff --git a/package-lock.json b/old-lock.txt\nsimilarity index 100%\nrename from package-lock.json\nrename to old-lock.txt",
+  ]) {
+    const report = analyzeDiff(`${manifest}\n${lockfile}`);
+    const finding = report.findings.find((f) => f.rule === "lockfile");
+    assert.ok(finding);
+    assert.equal(finding.path, "package.json");
+    assert.equal(finding.severity, "medium");
+  }
+});
+test("a replacement lockfile still suppresses the dependency prompt", () => {
+  const report = analyzeDiff(
+    patch("package.json", '@@ -1 +1 @@\n-{"x":"1"}\n+{"x":"2"}') +
+      "\ndiff --git a/package-lock.json b/package-lock.json\ndeleted file mode 100644\n--- a/package-lock.json\n+++ /dev/null\n@@ -1 +0,0 @@\n-old-lock\n" +
+      "diff --git a/pnpm-lock.yaml b/pnpm-lock.yaml\nnew file mode 100644\n--- /dev/null\n+++ b/pnpm-lock.yaml\n@@ -0,0 +1 @@\n+lockfileVersion: '9.0'",
+  );
+  assert.ok(!report.findings.some((f) => f.rule === "lockfile"));
+});
 test("unsupported or empty input fails clearly and size limits are enforced", () => {
   for (const input of ["", "hello", "x".repeat(limits.bytes + 1)])
     assert.throws(() => analyzeDiff(input));
