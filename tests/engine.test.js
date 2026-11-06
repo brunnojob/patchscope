@@ -140,6 +140,29 @@ test("a replacement lockfile still suppresses the dependency prompt", () => {
   );
   assert.ok(!report.findings.some((f) => f.rule === "lockfile"));
 });
+test("dependency prompts stay scoped to each package and ecosystem", () => {
+  const manifest = (path) => patch(path, '@@ -1 +1 @@\n-{"version":"1"}\n+{"version":"2"}');
+  const report = analyzeDiff(
+    [manifest("apps/api/package.json"), manifest("apps/web/package.json"),
+      manifest("apps/api/package-lock.json"), manifest("apps/web/go.sum")].join("\n"),
+  );
+  assert.deepEqual(report.findings.filter((f) => f.rule === "lockfile").map((f) => f.path), ["apps/web/package.json"]);
+});
+test("workspace lockfiles are not silently assumed to cover nested packages", () => {
+  const report = analyzeDiff(
+    patch("apps/web/package.json", '@@ -1 +1 @@\n-{}\n+{"x":1}') + "\n" +
+    patch("pnpm-lock.yaml", "@@ -1 +1 @@\n-old\n+new"),
+  );
+  const finding = report.findings.find((f) => f.rule === "lockfile");
+  assert.ok(finding);
+  assert.match(finding.reason, /Workspace lockfiles/);
+});
+test("same-directory Bun and npm shrinkwrap lockfiles are recognized", () => {
+  for (const lock of ["bun.lock", "bun.lockb", "npm-shrinkwrap.json"]) {
+    const report = analyzeDiff(patch("package.json", '@@ -1 +1 @@\n-{}\n+{"x":1}') + "\n" + patch(lock, "@@ -1 +1 @@\n-old\n+new"));
+    assert.ok(!report.findings.some((f) => f.rule === "lockfile"));
+  }
+});
 test("unsupported or empty input fails clearly and size limits are enforced", () => {
   for (const input of ["", "hello", "x".repeat(limits.bytes + 1)])
     assert.throws(() => analyzeDiff(input));

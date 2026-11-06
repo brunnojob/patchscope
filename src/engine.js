@@ -161,10 +161,16 @@ const isManifest = (path) =>
   /(^|\/)(package\.json|pyproject\.toml|requirements[^/]*\.txt|go\.mod|Cargo\.toml|pom\.xml|Gemfile)$/i.test(
     path,
   );
-const isLock = (path) =>
-  /(^|\/)(package-lock\.json|pnpm-lock\.yaml|yarn\.lock|poetry\.lock|uv\.lock|Pipfile\.lock|go\.sum|Cargo\.lock|Gemfile\.lock)$/i.test(
-    path,
-  );
+const lockfilesFor = (path) => {
+  const name = path.split("/").at(-1).toLowerCase();
+  if (name === "package.json") return ["package-lock.json", "npm-shrinkwrap.json", "pnpm-lock.yaml", "yarn.lock", "bun.lock", "bun.lockb"];
+  if (name === "pyproject.toml" || /^requirements.*\.txt$/.test(name)) return ["poetry.lock", "uv.lock", "Pipfile.lock"];
+  if (name === "go.mod") return ["go.sum"];
+  if (name === "cargo.toml") return ["Cargo.lock"];
+  if (name === "gemfile") return ["Gemfile.lock"];
+  return [];
+};
+const directory = (path) => path.includes("/") ? path.slice(0, path.lastIndexOf("/") + 1) : "";
 export function analyzeDiff(input) {
   const parsed = parseDiff(input),
     findings = [];
@@ -329,21 +335,24 @@ export function analyzeDiff(input) {
   const manifests = parsed.files.filter(
     (file) => isManifest(file.path) && file.additions + file.deletions,
   );
-  if (
-    manifests.length &&
-    !parsed.files.some(
-      (file) => isLock(file.path) && file.status !== "deleted",
-    )
-  )
+  for (const manifest of manifests) {
+    const compatible = lockfilesFor(manifest.path);
+    const folder = directory(manifest.path);
+    if (parsed.files.some((file) =>
+      file.status !== "deleted" &&
+      directory(file.path) === folder &&
+      compatible.includes(file.path.split("/").at(-1)),
+    )) continue;
     emit(
       "lockfile",
       "medium",
-      manifests[0],
+      manifest,
       null,
       "Check dependency reproducibility",
-      "A dependency manifest changed, but this patch contains no recognized lockfile that is kept or added. Some ecosystems do not require one.",
-      "Confirm the project’s dependency policy and regenerate the lockfile if applicable.",
+      "A dependency manifest changed, but this patch contains no compatible lockfile kept or added in the same directory. Workspace lockfiles may live at an ancestor directory, and some ecosystems do not require one.",
+      "Confirm the project’s dependency or workspace policy and regenerate the appropriate lockfile if applicable.",
     );
+  }
   const runtime = parsed.files.filter(
     (file) =>
       /\.(?:[cm]?[jt]sx?|py|go|rs|java|rb|cs|php)$/.test(file.path) &&

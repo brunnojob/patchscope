@@ -31,6 +31,30 @@ test("CLI accepts stdin and fails on malformed patches", () => {
   assert.equal(bad.status, 1);
   assert.ok(bad.stderr.includes("No unified diff"));
 });
+test("CLI priority thresholds are opt-in and preserve the complete report", () => {
+  const cases = [
+    ["query.sql", "DROP TABLE users;", "high", 2],
+    ["test.js", "test.only('focused', () => {});", "high", 0],
+    ["test.js", "test.only('focused', () => {});", "medium", 2],
+    ["app.js", "const x = 1;", "info", 2],
+    ["readme.md", "documentation", "info", 0],
+  ];
+  for (const [path, line, threshold, status] of cases) {
+    const result = spawnSync(process.execPath, ["scripts/cli.mjs", "-", "--format", "json", "--fail-on", threshold], {
+      input: `--- a/${path}\n+++ b/${path}\n@@ -0,0 +1 @@\n+${line}\n`, encoding: "utf8",
+    });
+    assert.equal(result.status, status, result.stderr);
+    assert.equal(JSON.parse(result.stdout).summary.files, 1);
+  }
+});
+test("CLI rejects misspelled, missing and duplicate options", () => {
+  for (const options of [["--fail-on", "critical"], ["--fail-on"], ["--format"], ["--formt", "json"], ["--format", "json", "--format", "markdown"]]) {
+    const result = spawnSync(process.execPath, ["scripts/cli.mjs", "docs/example.diff", ...options], { encoding: "utf8" });
+    assert.equal(result.status, 1);
+    assert.match(result.stderr, /PatchScope:/);
+    assert.equal(result.stdout, "");
+  }
+});
 test("Action writes output paths, summaries and reports without requiring a GitHub token", async () => {
   const dir = await mkdtemp(join(tmpdir(), "patchscope-test-"));
   try {

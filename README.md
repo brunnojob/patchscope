@@ -14,6 +14,8 @@
 
 </div>
 
+![PatchScope review map with five prompts and a file diff](docs/preview.jpg)
+
 ---
 
 Reviewing a change is easier when you know where to start. PatchScope reads a unified diff and highlights concrete reasons to take a closer look: removed tests, broad workflow permissions, destructive SQL, dependency changes and more.
@@ -30,7 +32,29 @@ Every prompt explains **what matched, why it matters and what to check next**. T
 
 The bundled example has **4 changed files and 5 review prompts**. Also try the skipped-test example or a documentation-only patch with no matched rules.
 
-![PatchScope review map with five prompts and a file diff](docs/preview.jpg)
+## From patch to review plan
+
+A release patch changes a workflow, drops a SQL table, removes tests and updates a dependency manifest. PatchScope turns those changes into a prioritized checklist:
+
+```text
+4 files · 5 review prompts
+HIGH    Review this workflow privilege boundary
+HIGH    Potentially destructive SQL
+HIGH    A test file was removed
+MEDIUM  GitHub Actions behavior changed
+MEDIUM  Check dependency reproducibility
+```
+
+Each prompt includes its file, a line number when available, the reason it matched and a concrete action. Export the checklist to your PR, then use the diff viewer to inspect the context. Run `npm run demo` to reproduce this example locally.
+
+## Choose your workflow
+
+| Where you review | Start here | Result |
+| --- | --- | --- |
+| Browser | [Open the workspace](https://brunnojob.github.io/patchscope/) | Interactive file map, filters and checklist |
+| Terminal | Pipe `git diff` into the CLI | Markdown or JSON on stdout |
+| CI | Add the composite Action | Job summary and downloadable reports |
+| CI with an explicit threshold | CLI `--fail-on high` | Full report plus exit code `2` for high-priority prompts |
 
 ## What it catches
 
@@ -43,7 +67,7 @@ The bundled example has **4 changed files and 5 review prompts**. Also try the s
 | Skipped or exclusive test markers | Check which tests actually run |
 | Known TLS verification bypass patterns | Restore certificate verification |
 | Dynamic `eval` / `exec` calls | Trace input and execution context |
-| Dependency manifest without a kept or added lockfile in the patch | Check the project’s dependency policy |
+| Dependency manifest without a compatible same-directory lockfile in the patch | Check the project’s dependency policy |
 | Source changes without changed tests | Confirm existing coverage or add a regression test |
 | Binary changes or large file changes | Make space for a separate review |
 
@@ -81,7 +105,21 @@ Or use stdin:
 git diff --no-ext-diff --no-color HEAD | node /path/to/patchscope/scripts/cli.mjs - --format json
 ```
 
-Exit `0` means analysis completed, even when prompts were found. Invalid/oversized input and missing files exit `1`. This is not a blocking security gate.
+By default, findings do not fail the command. For a review workflow that needs an explicit priority threshold:
+
+```sh
+node scripts/cli.mjs change.diff --format json --fail-on high > review.json
+```
+
+The full report is still written to stdout. `high` matches high-priority prompts; `medium` includes high and medium; `info` includes every prompt. Treat a threshold match as a request for human review, not proof of a vulnerability.
+
+| Exit code | Meaning |
+| --- | --- |
+| `0` | Analysis completed and no requested threshold matched |
+| `1` | Invalid options, missing file, malformed or oversized input |
+| `2` | A prompt met the explicitly requested `--fail-on` threshold |
+
+Use `--help` for options. Without `--fail-on`, analysis exits `0` even when prompts are found.
 
 ## GitHub Actions
 
@@ -155,6 +193,12 @@ Open `http://localhost:4173`. ES modules need HTTP; opening the HTML with `file:
 | `tests/` | Parser, rules, report privacy, CLI and Action integration |
 
 Tests cover quoted/UTF-8 names, renames, line numbers, binary changes, deleted tests, placeholder credentials, escaping, limits, stdin and actual output files. CI runs on Linux/Windows with Node.js 22/24 and smoke-tests the composite action.
+
+## Dependency checks in monorepos
+
+A lockfile only suppresses a manifest prompt when it belongs to a compatible ecosystem and is in the same directory. Changing `apps/api/package-lock.json` does not hide a prompt for `apps/web/package.json`; changing `go.sum` does not cover an npm manifest. npm shrinkwrap, pnpm, Yarn and Bun lockfile names are recognized alongside the existing Python, Go, Rust and Ruby formats.
+
+Shared workspace lockfiles can live above a package. PatchScope does not read workspace configuration or unchanged files, so it keeps the prompt and asks you to confirm the workspace policy. A prompt does not mean a lockfile is missing from your repository.
 
 ## Limits and next steps
 
