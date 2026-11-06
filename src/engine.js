@@ -1,3 +1,4 @@
+import { validateConfig, configureFindings } from "./config.js";
 export const limits = Object.freeze({
   bytes: 2_000_000,
   files: 500,
@@ -171,7 +172,8 @@ const lockfilesFor = (path) => {
   return [];
 };
 const directory = (path) => path.includes("/") ? path.slice(0, path.lastIndexOf("/") + 1) : "";
-export function analyzeDiff(input) {
+export function analyzeDiff(input, options = {}) {
+  const config = validateConfig(options);
   const parsed = parseDiff(input),
     findings = [];
   const emit = (rule, severity, file, line, title, reason, action) =>
@@ -375,12 +377,13 @@ export function analyzeDiff(input) {
       "Run the relevant suite and add a regression test when behavior changes.",
     );
   const order = { high: 0, medium: 1, info: 2 };
-  findings.sort(
+  const { active, suppressed } = configureFindings(findings, config);
+  active.sort(
     (a, b) =>
       order[a.severity] - order[b.severity] || a.path.localeCompare(b.path),
   );
   const counts = { high: 0, medium: 0, info: 0 };
-  for (const finding of findings) counts[finding.severity]++;
+  for (const finding of active) counts[finding.severity]++;
   const files = parsed.files.map(({ lines, ...file }) => file);
   return {
     version: 1,
@@ -388,7 +391,8 @@ export function analyzeDiff(input) {
       files: files.length,
       additions: files.reduce((s, f) => s + f.additions, 0),
       deletions: files.reduce((s, f) => s + f.deletions, 0),
-      findings: findings.length,
+      findings: active.length,
+      suppressed: suppressed.length,
       level: counts.high
         ? "high"
         : counts.medium
@@ -398,7 +402,12 @@ export function analyzeDiff(input) {
             : "clear",
       counts,
     },
-    findings,
+    findings: active,
+    suppressed,
+    configuration: {
+      disabledRules: Object.keys(config.rules).filter((rule) => config.rules[rule] === "off"),
+      severityOverrides: Object.fromEntries(Object.entries(config.rules).filter(([, value]) => value !== "off")),
+    },
     files,
     warnings: parsed.warnings,
     scope:
@@ -418,6 +427,9 @@ export function toMarkdown(report) {
     "",
     report.scope,
     "",
+    ...(report.configuration?.disabledRules.length ? [
+      `Disabled rules: ${report.configuration.disabledRules.map(markdown).join(", ")}.`, "",
+    ] : []),
     ...report.warnings.map((w) => `> ${w}`),
     ...report.findings.flatMap((f) => [
       `## ${f.severity.toUpperCase()} · ${f.title}`,
@@ -432,9 +444,15 @@ export function toMarkdown(report) {
     ...(report.findings.length
       ? []
       : [
-          "No heuristic flags matched. Review and test the patch normally.",
+          "No active heuristic flags. Review and test the patch normally.",
           "",
         ]),
+    ...((report.suppressed ?? []).length ? [
+      "## Suppressed prompts", "",
+      ...report.suppressed.flatMap((f) => [
+        `- ${markdown(f.rule)} · ${markdown(f.path)}${f.line ? `:${f.line}` : ""}: ${markdown(f.justification)}`,
+      ]), "",
+    ] : []),
     "---",
     "Generated locally with [PatchScope](https://brunnojob.github.io/patchscope/) by [brunnodev](https://brunnodev.store).",
     "",

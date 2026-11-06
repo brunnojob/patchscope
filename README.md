@@ -52,7 +52,7 @@ Each prompt includes its file, a line number when available, the reason it match
 | Where you review | Start here | Result |
 | --- | --- | --- |
 | Browser | [Open the workspace](https://brunnojob.github.io/patchscope/) | Interactive file map, filters and checklist |
-| Terminal | Pipe `git diff` into the CLI | Markdown or JSON on stdout |
+| Terminal | Pipe `git diff` into the CLI | Markdown, JSON or SARIF on stdout |
 | CI | Add the composite Action | Job summary and downloadable reports |
 | CI with an explicit threshold | CLI `--fail-on high` | Full report plus exit code `2` for high-priority prompts |
 
@@ -121,9 +121,51 @@ The full report is still written to stdout. `high` matches high-priority prompts
 
 Use `--help` for options. Without `--fail-on`, analysis exits `0` even when prompts are found.
 
+## Configure rules and explain exceptions
+
+Pass an explicit JSON file with `--config`; PatchScope never discovers or executes repository configuration automatically. This config customizes the built-in rules, not arbitrary executable plugins.
+
+```json
+{
+  "rules": {
+    "large-file": "info",
+    "test-coverage": "off"
+  },
+  "suppressions": [
+    {
+      "rule": "destructive-sql",
+      "path": "src/db/migrate.sql",
+      "line": 1,
+      "reason": "Disposable fixture database; reviewed in issue 42."
+    }
+  ]
+}
+```
+
+```sh
+node scripts/cli.mjs change.diff --config patchscope.json --format json
+node scripts/cli.mjs change.diff --config patchscope.json --format sarif > review.sarif
+```
+
+Rule settings accept `high`, `medium`, `info` or `off`. Omitted rules keep their defaults. Unknown keys, rules, severities and invalid suppressions fail explicitly. Configuration files are limited to 256 KB and 1,000 suppressions.
+
+Suppressions match an **exact rule and patch path**, with an optional positive new-line number. Omit `line` to cover that rule throughout the named file, including file-level prompts. Paths are case-sensitive, use `/`, and have no glob syntax. Each suppression requires a reason of up to 500 characters. Only the first matching suppression applies; unmatched entries have no effect.
+
+Suppressed prompts stay in JSON (`suppressed`), Markdown and SARIF with their justification. They do not contribute to active counts or `--fail-on`. Rules set to `off` do not emit prompts; disabled rule IDs are disclosed in report metadata and Markdown. Severity overrides apply before thresholds. Keep reasons free of credentials or private source: supplied justifications are exported verbatim in JSON/SARIF and escaped in Markdown.
+
+Available rule IDs: `binary`, `deleted-tests`, `environment`, `large-file`, `workflow`, `private-key`, `credential`, `destructive-sql`, `test-scope`, `workflow-privilege`, `tls`, `dynamic-code`, `lockfile`, `test-coverage`.
+
+The engine API accepts the same object: `analyzeDiff(patch, config)`. The browser workspace uses the default rules; configuration is currently exposed through the CLI, engine API and Action.
+
+## SARIF export
+
+`--format sarif` produces SARIF 2.1.0 with rule IDs, encoded file paths, new-line locations when available and priorities mapped to `error` / `warning` / `note`. File-level prompts have no invented line number. Explained exceptions use external suppressions. Raw diff lines and detected credential values are not included.
+
+The Action also writes a SARIF report. Export is local: publishing a report to a code-scanning service is a separate workflow step with that service's permissions and availability requirements. SARIF priorities still describe heuristic review prompts, not confirmed vulnerabilities.
+
 ## GitHub Actions
 
-The composite action accepts an existing patch, writes a job summary and creates report files. It does not post comments, request an API token, contact an AI service or modify the repository.
+The composite action accepts an existing patch, writes a job summary and creates Markdown, JSON and SARIF report files. It does not post comments, request an API token, contact an AI service or modify the repository.
 
 ```yaml
 name: Patch review
@@ -152,6 +194,7 @@ jobs:
           path: |
             ${{ steps.scope.outputs.report-json }}
             ${{ steps.scope.outputs.report-markdown }}
+            ${{ steps.scope.outputs.report-sarif }}
 ```
 
 Use `@main` for a first experiment. In production, pin this and other third-party actions to reviewed full commit SHAs. The composite action declares `actions/setup-node@v4` to provide Node.js 22.
@@ -159,10 +202,15 @@ Use `@main` for a first experiment. In production, pin this and other third-part
 | Input / output | Meaning |
 | --- | --- |
 | `diff-file` | Required path to an existing unified diff |
+| `config-file` | Optional explicit JSON configuration path; no auto-discovery |
 | `summary` | `true` by default; `false` disables the job summary |
 | `report-json` | Output path to the JSON report |
 | `report-markdown` | Output path to the Markdown report |
+| `report-sarif` | Output path to the SARIF 2.1.0 report |
+| `suppressed-count` | Number of prompts with explained suppressions |
 | `high-count` | Output count of high-priority heuristic prompts |
+
+Add `config-file: patchscope.json` under the Action’s `with:` block to apply a reviewed policy. On pull requests, choose a trusted policy file if these settings influence your review decisions. The Action reports active counts and remains non-blocking; CLI thresholds are opt-in.
 
 Action summaries and artifacts follow your repository’s access and retention settings. Browser code is not uploaded; your configured workflow can publish its report.
 
@@ -185,6 +233,8 @@ Open `http://localhost:4173`. ES modules need HTTP; opening the HTML with `file:
 | Module | Responsibility |
 | --- | --- |
 | `src/engine.js` | Diff parsing, heuristics and Markdown generation |
+| `src/config.js` | Built-in rule settings, validation and explained suppressions |
+| `src/sarif.js` | SARIF 2.1.0 export |
 | `src/app.js` | Browser interactions and downloads |
 | `src/examples.js` | Synthetic offline examples |
 | `scripts/cli.mjs` | File/stdin CLI |
@@ -204,7 +254,7 @@ Shared workspace lockfiles can live above a package. PatchScope does not read wo
 
 Recognizes unified text diffs and basic Git file metadata. Combined merge diffs, AST analysis, full secret scanning and whole-repository context are outside this version. Comments, multiline constructs, unusual languages and test-file naming conventions can produce false negatives. Binary content is not inspected.
 
-Planned: configurable rules, suppression explanations, additional parser fixtures and SARIF export. These are not implemented yet.
+Next steps: additional parser fixtures, richer workspace-aware dependency checks and browser controls for configuration. Rule settings, explained suppressions and SARIF export are implemented in the engine, CLI and Action.
 
 ## Credits and license
 
