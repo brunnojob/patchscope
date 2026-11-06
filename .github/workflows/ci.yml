@@ -31,3 +31,4 @@ jobs:
           path: |
             ${{ steps.review.outputs.report-json }}
             ${{ steps.review.outputs.report-markdown }}
+            ${{ steps.review.outputs.report-sarif }}

@@ -11,6 +11,9 @@ inputs:
   summary:
     description: Append the Markdown review to the GitHub Actions job summary
     default: 'true'
+  config-file:
+    description: Optional path to an explicit PatchScope JSON configuration
+    required: false
 outputs:
   report-json:
     description: Path to the generated JSON report
@@ -21,6 +24,12 @@ outputs:
   high-count:
     description: Number of high-priority heuristic prompts
     value: ${{ steps.review.outputs.high-count }}
+  report-sarif:
+    description: Path to the SARIF 2.1.0 report
+    value: ${{ steps.review.outputs.report-sarif }}
+  suppressed-count:
+    description: Number of prompts suppressed with a justification
+    value: ${{ steps.review.outputs.suppressed-count }}
 runs:
   using: composite
   steps:
@@ -32,4 +41,5 @@ runs:
       env:
         INPUT_DIFF_FILE: ${{ inputs.diff-file }}
         INPUT_SUMMARY: ${{ inputs.summary }}
+        INPUT_CONFIG_FILE: ${{ inputs.config-file }}
       run: node "$GITHUB_ACTION_PATH/scripts/action.mjs"
