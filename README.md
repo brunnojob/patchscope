@@ -3,7 +3,7 @@
 <img src="docs/icon.svg" width="64" alt="PatchScope">
 
 # PatchScope
-
+# STAR THE PROJECT [![Starred on StarSwap](https://www.fenriryt.me/badge/ineedfoundmyway)](https://www.fenriryt.me/u/ineedfoundmyway?ref=badge)
 ### Big diff? Know where to look.
 
 **Turn a Git patch into an actionable review checklist — in your browser, terminal or GitHub Actions.**
