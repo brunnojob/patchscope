@@ -1,0 +1,33 @@
+name: PatchScope PR review
+on:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Create pull request diff
+        shell: bash
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: git diff --no-ext-diff --no-color "$BASE_SHA...$HEAD_SHA" > "$RUNNER_TEMP/patchscope.diff"
+      - name: Build review checklist
+        id: review
+        uses: brunnojob/patchscope@v2.0.1
+        with:
+          diff-file: ${{ runner.temp }}/patchscope.diff
+      - name: Keep review reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: patchscope-review
+          retention-days: 7
+          path: |
+            ${{ steps.review.outputs.report-markdown }}
+            ${{ steps.review.outputs.report-json }}
+            ${{ steps.review.outputs.report-sarif }}

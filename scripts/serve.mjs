@@ -11,6 +11,9 @@ const types = {
   ".svg": "image/svg+xml",
   ".json": "application/json",
   ".jpg": "image/jpeg",
+  ".png": "image/png",
+  ".mp4": "video/mp4",
+  ".md": "text/plain; charset=utf-8",
 };
 http
   .createServer(async (req, res) => {

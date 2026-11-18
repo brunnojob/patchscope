@@ -1,0 +1,113 @@
+{
+  "version": 1,
+  "summary": {
+    "files": 4,
+    "additions": 5,
+    "deletions": 5,
+    "findings": 5,
+    "suppressed": 0,
+    "level": "high",
+    "counts": {
+      "high": 3,
+      "medium": 2,
+      "info": 0
+    }
+  },
+  "findings": [
+    {
+      "id": "finding-2",
+      "rule": "workflow-privilege",
+      "severity": "high",
+      "path": ".github/workflows/deploy.yml",
+      "line": 3,
+      "title": "Review this workflow privilege boundary",
+      "reason": "An added line uses broad write permissions or pull_request_target.",
+      "action": "Use the minimum token permissions and keep untrusted code away from privileged execution."
+    },
+    {
+      "id": "finding-3",
+      "rule": "destructive-sql",
+      "severity": "high",
+      "path": "src/db/migrate.sql",
+      "line": 1,
+      "title": "Potentially destructive SQL",
+      "reason": "An added line contains a DROP or TRUNCATE operation.",
+      "action": "Confirm target environment, backups, migration sequencing and a recovery plan."
+    },
+    {
+      "id": "finding-4",
+      "rule": "deleted-tests",
+      "severity": "high",
+      "path": "tests/session.test.js",
+      "line": null,
+      "title": "A test file was removed",
+      "reason": "Removing tests can hide a regression or reduce coverage.",
+      "action": "Check whether equivalent tests were moved or replaced."
+    },
+    {
+      "id": "finding-1",
+      "rule": "workflow",
+      "severity": "medium",
+      "path": ".github/workflows/deploy.yml",
+      "line": null,
+      "title": "GitHub Actions behavior changed",
+      "reason": "Workflow changes can alter what executes and which credentials it receives.",
+      "action": "Review triggers, permissions, action pinning and handling of untrusted pull requests."
+    },
+    {
+      "id": "finding-5",
+      "rule": "lockfile",
+      "severity": "medium",
+      "path": "package.json",
+      "line": null,
+      "title": "Check dependency reproducibility",
+      "reason": "A dependency manifest changed, but this patch contains no compatible lockfile kept or added in the same directory. Workspace lockfiles may live at an ancestor directory, and some ecosystems do not require one.",
+      "action": "Confirm the project\u2019s dependency or workspace policy and regenerate the appropriate lockfile if applicable."
+    }
+  ],
+  "suppressed": [],
+  "configuration": {
+    "disabledRules": [],
+    "severityOverrides": {}
+  },
+  "files": [
+    {
+      "path": ".github/workflows/deploy.yml",
+      "previousPath": ".github/workflows/deploy.yml",
+      "status": "modified",
+      "binary": false,
+      "additions": 2,
+      "deletions": 1,
+      "hunks": 1
+    },
+    {
+      "path": "src/db/migrate.sql",
+      "previousPath": null,
+      "status": "added",
+      "binary": false,
+      "additions": 2,
+      "deletions": 0,
+      "hunks": 1
+    },
+    {
+      "path": "tests/session.test.js",
+      "previousPath": "tests/session.test.js",
+      "status": "deleted",
+      "binary": false,
+      "additions": 0,
+      "deletions": 3,
+      "hunks": 1
+    },
+    {
+      "path": "package.json",
+      "previousPath": "package.json",
+      "status": "modified",
+      "binary": false,
+      "additions": 1,
+      "deletions": 1,
+      "hunks": 1
+    }
+  ],
+  "warnings": [],
+  "scope": "Heuristic diff triage. Not a security audit or proof that a change is safe."
+}

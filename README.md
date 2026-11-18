@@ -27,6 +27,14 @@ Every prompt explains **what matched, why it matters and what to check next**. T
 
 **No API keys. No model calls. No code uploads. No account.**
 
+## Watch the workflow
+
+[![PatchScope illustrated diff-to-checklist walkthrough](docs/launch/demo-poster.png)](https://brunnojob.github.io/patchscope/docs/launch/demo.html)
+
+[Watch the 18-second walkthrough](https://brunnojob.github.io/patchscope/docs/launch/demo.html) · [Download MP4](https://github.com/brunnojob/patchscope/raw/main/docs/launch/patchscope-demo.mp4) · [Follow the practical tutorial](docs/launch/tutorial.md)
+
+Rendered from the actual bundled fixture output. The CI panel illustrates the reporting integration; it is not a GitHub screen recording. [Transcript](docs/launch/transcript.md).
+
 ## Try it in 30 seconds
 
 1. Open **[PatchScope](https://brunnojob.github.io/patchscope/)**.
@@ -266,6 +274,10 @@ Shared workspace lockfiles can live above a package. PatchScope does not read wo
 Recognizes unified text diffs and basic Git file metadata. Combined merge diffs, AST analysis, full secret scanning and whole-repository context are outside this version. Comments, multiline constructs, unusual languages and test-file naming conventions can produce false negatives. Binary content is not inspected.
 
 Next steps: additional parser fixtures, richer workspace-aware dependency checks and browser controls for configuration. Rule settings, explained suppressions and SARIF export are implemented in the engine, CLI and Action.
+
+## Share and teach
+
+Use the [launch resources](docs/launch/README.md) for a reproducible demo, copyable workflow, DEV.to tutorial, LinkedIn post, Show HN draft and Awesome Actions proposal. These materials focus on real behavior and documented limits.
 
 ## Support PatchScope
 
