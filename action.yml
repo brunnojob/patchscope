@@ -1,5 +1,5 @@
 name: PatchScope diff review
-description: Generate a local heuristic review checklist from a unified diff. No API token or AI service required.
+description: Review Git diffs for risky changes, removed tests and CI permission changes. Export Markdown, JSON and SARIF without AI keys or uploads.
 author: brunnodev
 branding:
   icon: git-pull-request

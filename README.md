@@ -3,14 +3,17 @@
 <img src="docs/icon.svg" width="64" alt="PatchScope">
 
 # PatchScope
-# STAR THE PROJECT [![Starred on StarSwap](https://www.fenriryt.me/badge/ineedfoundmyway)](https://www.fenriryt.me/u/ineedfoundmyway?ref=badge)
 ### Big diff? Know where to look.
 
 **Turn a Git patch into an actionable review checklist — in your browser, terminal or GitHub Actions.**
 
-[Try the live demo](https://brunnojob.github.io/patchscope/) · [CLI quick start](#cli-quick-start) · [GitHub Actions](#github-actions) · [Contribute a rule](CONTRIBUTING.md)
+[Install from GitHub Marketplace](https://github.com/marketplace/actions/patchscope-diff-review) · [Try the live demo](https://brunnojob.github.io/patchscope/) · [CLI quick start](#cli-quick-start) · [Contribute a rule](CONTRIBUTING.md)
 
+[![GitHub Marketplace](https://img.shields.io/badge/Marketplace-PatchScope-8b5cf6?logo=github)](https://github.com/marketplace/actions/patchscope-diff-review)
 ![Validation](https://github.com/brunnojob/patchscope/actions/workflows/ci.yml/badge.svg)
+[![Release](https://img.shields.io/github/v/release/brunnojob/patchscope)](https://github.com/brunnojob/patchscope/releases)
+[![MIT license](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Support via Stripe](https://img.shields.io/badge/Support-Stripe-635BFF?logo=stripe&logoColor=white)](https://donate.stripe.com/6oU8wQg9k9Hb8809CrfQI01)
 
 </div>
 
@@ -165,6 +168,10 @@ The Action also writes a SARIF report. Export is local: publishing a report to a
 
 ## GitHub Actions
 
+Install **[PatchScope diff review](https://github.com/marketplace/actions/patchscope-diff-review)** from GitHub Marketplace, or save the workflow below as `.github/workflows/patchscope.yml`. The Action is free and MIT licensed. No registration, subscription or donation is required.
+
+The example compares the PR merge base with its head, so it reviews the proposed changes. It runs with read-only repository permissions and does not execute PR source code. Keep this event as `pull_request`, including for contributions from forks.
+
 The composite action accepts an existing patch, writes a job summary and creates Markdown, JSON and SARIF report files. It does not post comments, request an API token, contact an AI service or modify the repository.
 
 ```yaml
@@ -179,12 +186,14 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          persist-credentials: false
       - name: Create review patch
+        shell: bash
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: git diff --no-ext-diff --no-color "$BASE_SHA...$HEAD_SHA" > review.diff
-      - uses: brunnojob/patchscope@main
+      - uses: brunnojob/patchscope@v2.0.1
         id: scope
         with:
           diff-file: review.diff
@@ -197,7 +206,7 @@ jobs:
             ${{ steps.scope.outputs.report-sarif }}
 ```
 
-Use `@main` for a first experiment. In production, pin this and other third-party actions to reviewed full commit SHAs. The composite action declares `actions/setup-node@v4` to provide Node.js 22.
+Use the versioned release above for a reproducible starting point. For stronger supply-chain protection in production, pin this and other third-party actions to reviewed full commit SHAs. The composite action declares `actions/setup-node@v4` to provide Node.js 22.
 
 | Input / output | Meaning |
 | --- | --- |
@@ -211,6 +220,8 @@ Use `@main` for a first experiment. In production, pin this and other third-part
 | `high-count` | Output count of high-priority heuristic prompts |
 
 Add `config-file: patchscope.json` under the Action’s `with:` block to apply a reviewed policy. On pull requests, choose a trusted policy file if these settings influence your review decisions. The Action reports active counts and remains non-blocking; CLI thresholds are opt-in.
+
+For troubleshooting and the complete input/output contract, see [the Action guide](docs/github-action.md). Report bugs through [GitHub Issues](https://github.com/brunnojob/patchscope/issues). For sensitive reports, see [SECURITY.md](SECURITY.md).
 
 Action summaries and artifacts follow your repository’s access and retention settings. Browser code is not uploaded; your configured workflow can publish its report.
 
@@ -255,6 +266,20 @@ Shared workspace lockfiles can live above a package. PatchScope does not read wo
 Recognizes unified text diffs and basic Git file metadata. Combined merge diffs, AST analysis, full secret scanning and whole-repository context are outside this version. Comments, multiline constructs, unusual languages and test-file naming conventions can produce false negatives. Binary content is not inspected.
 
 Next steps: additional parser fixtures, richer workspace-aware dependency checks and browser controls for configuration. Rule settings, explained suppressions and SARIF export are implemented in the engine, CLI and Action.
+
+## Support PatchScope
+
+Keep local-first code review accessible to everyone. Contributions help fund maintenance, regression fixtures, documentation and new review rules. Choose your contribution amount on Stripe; support is optional and unlocks no required features.
+
+<p align="center">
+  <a href="https://donate.stripe.com/6oU8wQg9k9Hb8809CrfQI01">
+    <img src="https://img.shields.io/badge/Support_PatchScope-Contribute_any_amount-635BFF?style=for-the-badge&logo=stripe&logoColor=white" alt="Support PatchScope — contribute any amount via Stripe" />
+  </a>
+</p>
+
+[Contribute via Stripe](https://donate.stripe.com/6oU8wQg9k9Hb8809CrfQI01) · [Buy Me a Coffee](https://buymeacoffee.com/brunnodev) · [Contribute code or fixtures](CONTRIBUTING.md)
+
+The contribution button opens Stripe checkout on Stripe’s website. PatchScope does not collect payment details.
 
 ## Credits and license
 
