@@ -1,5 +1,5 @@
 name: PatchScope diff review
-description: Review Git diffs for risky changes, removed tests and CI permission changes. Export Markdown, JSON and SARIF without AI keys or uploads.
+description: Git diff review checklists for risky changes, tests and CI permissions. Markdown, JSON and SARIF. No AI keys.
 author: brunnodev
 branding:
   icon: git-pull-request
